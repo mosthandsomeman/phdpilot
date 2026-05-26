@@ -5,10 +5,12 @@ WORKDIR /app
 
 ARG NPM_REGISTRY=https://registry.npmmirror.com
 
-COPY package*.json ./
+COPY package.json package-lock.json ./
 RUN set -eux; \
     if [ -n "${NPM_REGISTRY}" ]; then npm config set registry "${NPM_REGISTRY}"; fi; \
-    npm ci
+    npm ci --include=dev; \
+    npm cache clean --force; \
+    rm -rf /root/.npm /tmp/*
 
 COPY . .
 

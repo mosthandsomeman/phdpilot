@@ -1,5 +1,7 @@
 # Production image (Next.js standalone) — low memory, for ECS deployment.
 ARG NODE_IMAGE=node:20-alpine
+
+# --- builder ---
 FROM ${NODE_IMAGE} AS builder
 
 WORKDIR /app
@@ -10,18 +12,24 @@ ARG NEXT_PUBLIC_API_URL=http://localhost/api
 RUN set -eux; \
     if [ -n "${NPM_REGISTRY}" ]; then npm config set registry "${NPM_REGISTRY}"; fi
 
-COPY package*.json ./
-RUN npm ci
+COPY package.json package-lock.json ./
+RUN set -eux; \
+    npm ci --include=dev; \
+    npm cache clean --force; \
+    rm -rf /root/.npm /tmp/*
 
 COPY . .
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NODE_ENV=production
-# Limit build heap on small ECS (adjust if build still OOM)
 ENV NODE_OPTIONS=--max-old-space-size=1536
 
-RUN npm run build
+RUN set -eux; \
+    ./node_modules/.bin/next build; \
+    rm -rf node_modules /root/.npm /tmp/*; \
+    npm cache clean --force 2>/dev/null || true
 
+# --- runner: only standalone output ---
 FROM ${NODE_IMAGE} AS runner
 
 WORKDIR /app
