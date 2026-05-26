@@ -213,4 +213,11 @@ export const en = {
   },
 } as const;
 
-export type Dictionary = typeof en;
+/** Same nested keys as `en`, but leaf values are any locale string (not English literals). */
+type DeepString<T> = T extends string
+  ? string
+  : T extends object
+    ? { [K in keyof T]: DeepString<T[K]> }
+    : T;
+
+export type Dictionary = DeepString<typeof en>;
