@@ -17,7 +17,16 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    op.execute("ALTER TYPE positionstatus ADD VALUE IF NOT EXISTS 'possibly_closed'")
+    # No-op when status is VARCHAR; safe if native enum exists from older DBs
+    op.execute(
+        """
+        DO $$ BEGIN
+            ALTER TYPE positionstatus ADD VALUE IF NOT EXISTS 'possibly_closed';
+        EXCEPTION
+            WHEN undefined_object THEN NULL;
+        END $$;
+        """
+    )
 
     op.add_column("phd_positions", sa.Column("application_url", sa.String(length=1000), nullable=True))
     op.add_column(

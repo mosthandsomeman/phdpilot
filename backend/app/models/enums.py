@@ -13,5 +13,6 @@ def pg_enum(enum_cls: type[E], *, name: str | None = None, **kwargs) -> SAEnum:
         enum_cls,
         name=name or enum_cls.__name__.lower(),
         values_callable=lambda members: [m.value for m in members],
+        native_enum=False,
         **kwargs,
     )

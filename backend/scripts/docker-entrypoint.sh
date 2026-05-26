@@ -1,45 +1,49 @@
 #!/bin/sh
 set -e
 
-echo "[entrypoint] Running alembic upgrade head..."
-if alembic upgrade head; then
-  echo "[entrypoint] Migrations OK."
-else
-  echo "[entrypoint] Migration failed — checking for existing schema..."
+run_migrate() {
+  alembic upgrade head
+}
+
+cleanup_orphan_enums() {
   python - <<'PY'
 import asyncio
-import subprocess
-import sys
-
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import create_async_engine
-
 from app.config import get_settings
 
+ENUM_TYPES = (
+    "userrole",
+    "membershiptype",
+    "positionstatus",
+    "credittransactiontype",
+    "applicationstatus",
+    "aioutputtype",
+)
 
 async def main() -> None:
     engine = create_async_engine(get_settings().database_url)
-    async with engine.connect() as conn:
-        users = (
-            await conn.execute(
-                text(
-                    "SELECT EXISTS ("
-                    "  SELECT 1 FROM information_schema.tables "
-                    "  WHERE table_schema = 'public' AND table_name = 'users'"
-                    ")"
-                )
-            )
-        ).scalar()
+    async with engine.begin() as conn:
+        for name in ENUM_TYPES:
+            await conn.execute(text(f'DROP TYPE IF EXISTS "{name}" CASCADE'))
     await engine.dispose()
-    if not users:
-        print("[entrypoint] No users table — migration must succeed.", file=sys.stderr)
-        sys.exit(1)
-    print("[entrypoint] Schema exists — stamping alembic head.")
-    subprocess.run(["alembic", "stamp", "head"], check=True)
-
 
 asyncio.run(main())
 PY
+}
+
+echo "[entrypoint] Running alembic upgrade head..."
+if run_migrate; then
+  echo "[entrypoint] Migrations OK."
+else
+  echo "[entrypoint] Migration failed — dropping orphan enum types and retrying..."
+  cleanup_orphan_enums
+  if ! run_migrate; then
+    echo "[entrypoint] Still failing. Reset database:" >&2
+    echo "  docker compose exec postgres psql -U phdpilot -d phdpilot -c \"DROP SCHEMA public CASCADE; CREATE SCHEMA public; GRANT ALL ON SCHEMA public TO phdpilot; GRANT ALL ON SCHEMA public TO public; CREATE EXTENSION IF NOT EXISTS vector;\"" >&2
+    exit 1
+  fi
+  echo "[entrypoint] Migrations OK after enum cleanup."
 fi
 
 echo "[entrypoint] Starting uvicorn..."

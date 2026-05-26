@@ -16,40 +16,16 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
-def _ensure_enum(name: str, values: list[str]) -> None:
-    literals = ", ".join(f"'{v}'" for v in values)
-    op.execute(
-        f"""
-        DO $$ BEGIN
-            CREATE TYPE {name} AS ENUM ({literals});
-        EXCEPTION
-            WHEN duplicate_object THEN NULL;
-        END $$;
-        """
-    )
-
-
-def _enum(name: str, *values: str) -> sa.Enum:
-    return sa.Enum(*values, name=name, create_type=False)
-
-
 def upgrade() -> None:
     op.execute("CREATE EXTENSION IF NOT EXISTS vector")
-
-    _ensure_enum("userrole", ["user", "admin"])
-    _ensure_enum("membershiptype", ["free", "pro"])
-    _ensure_enum("positionstatus", ["active", "closed", "expired"])
-    _ensure_enum("credittransactiontype", ["grant", "spend", "purchase", "refund"])
-    _ensure_enum("applicationstatus", ["saved", "applied", "contacted", "interview", "offer", "rejected"])
-    _ensure_enum("aioutputtype", ["match", "professor", "email", "sop", "polish", "deep_research"])
 
     op.create_table(
         "users",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("email", sa.String(length=255), nullable=False),
         sa.Column("password_hash", sa.String(length=255), nullable=False),
-        sa.Column("role", _enum("userrole", "user", "admin"), nullable=False),
-        sa.Column("membership_type", _enum("membershiptype", "free", "pro"), nullable=False),
+        sa.Column("role", sa.String(length=32), nullable=False),
+        sa.Column("membership_type", sa.String(length=32), nullable=False),
         sa.Column("credits", sa.Integer(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
@@ -73,7 +49,7 @@ def upgrade() -> None:
         sa.Column("funding", sa.String(length=200), nullable=True),
         sa.Column("source_name", sa.String(length=100), nullable=True),
         sa.Column("source_url", sa.String(length=1000), nullable=True),
-        sa.Column("status", _enum("positionstatus", "active", "closed", "expired"), nullable=False),
+        sa.Column("status", sa.String(length=32), nullable=False),
         sa.Column("content_hash", sa.String(length=64), nullable=True),
         sa.Column("last_seen_at", sa.DateTime(timezone=True), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
@@ -122,7 +98,7 @@ def upgrade() -> None:
         "credit_transactions",
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
-        sa.Column("type", _enum("credittransactiontype", "grant", "spend", "purchase", "refund"), nullable=False),
+        sa.Column("type", sa.String(length=32), nullable=False),
         sa.Column("amount", sa.Integer(), nullable=False),
         sa.Column("reason", sa.String(length=255), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
@@ -136,11 +112,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("position_id", sa.Integer(), nullable=False),
-        sa.Column(
-            "status",
-            _enum("applicationstatus", "saved", "applied", "contacted", "interview", "offer", "rejected"),
-            nullable=False,
-        ),
+        sa.Column("status", sa.String(length=32), nullable=False),
         sa.Column("notes", sa.Text(), nullable=True),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
         sa.Column("updated_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
@@ -156,11 +128,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), autoincrement=True, nullable=False),
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("position_id", sa.Integer(), nullable=True),
-        sa.Column(
-            "type",
-            _enum("aioutputtype", "match", "professor", "email", "sop", "polish", "deep_research"),
-            nullable=False,
-        ),
+        sa.Column("type", sa.String(length=32), nullable=False),
         sa.Column("model_name", sa.String(length=100), nullable=False),
         sa.Column("content", sa.Text(), nullable=False),
         sa.Column("created_at", sa.DateTime(timezone=True), server_default=sa.text("now()"), nullable=False),
@@ -196,9 +164,3 @@ def downgrade() -> None:
     op.drop_table("professors")
     op.drop_table("phd_positions")
     op.drop_table("users")
-    op.execute("DROP TYPE IF EXISTS aioutputtype")
-    op.execute("DROP TYPE IF EXISTS applicationstatus")
-    op.execute("DROP TYPE IF EXISTS credittransactiontype")
-    op.execute("DROP TYPE IF EXISTS positionstatus")
-    op.execute("DROP TYPE IF EXISTS membershiptype")
-    op.execute("DROP TYPE IF EXISTS userrole")
