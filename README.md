@@ -40,6 +40,37 @@ NODE_IMAGE=docker.m.daocloud.io/library/node:20-alpine
 
 保存后 **Restart Docker**，再执行 `docker compose up --build`。
 
+### 阿里云 / 国内 ECS 构建太慢
+
+瓶颈通常在 **容器内 `apt-get` / `pip` / `npm`** 仍走国外源。`.env` 已支持（见 `.env.example`）：
+
+```bash
+APT_MIRROR=mirrors.aliyun.com
+PIP_INDEX_URL=https://mirrors.aliyun.com/pypi/simple/
+NPM_REGISTRY=https://registry.npmmirror.com
+PYTHON_IMAGE=...python:3.12-slim-bookworm   # 固定 bookworm，避免 trixie 源不稳定
+```
+
+在 ECS 上建议同时配置 Docker 守护进程镜像加速（`/etc/docker/daemon.json`）：
+
+```json
+{
+  "registry-mirrors": [
+    "https://registry.cn-hangzhou.aliyuncs.com",
+    "https://docker.m.daocloud.io"
+  ]
+}
+```
+
+然后重新构建（无缓存首次会快很多）：
+
+```bash
+DOCKER_BUILDKIT=1 docker compose build --no-cache backend
+docker compose up -d
+```
+
+第二次构建会命中层缓存，`apt-get` 一般不再重复执行。
+
 | URL | Service |
 |-----|---------|
 | http://localhost | Frontend (via Nginx) |

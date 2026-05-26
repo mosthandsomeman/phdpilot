@@ -35,7 +35,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       args:
-        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.12-slim}
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.12-slim-bookworm}
+        APT_MIRROR: ${APT_MIRROR:-mirrors.aliyun.com}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-mirrors.aliyun.com}
     container_name: phdpilot-backend
     restart: unless-stopped
     env_file:
@@ -64,6 +67,7 @@ services:
       dockerfile: Dockerfile
       args:
         NODE_IMAGE: ${NODE_IMAGE:-node:20-alpine}
+        NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
         NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-http://localhost/api}
     container_name: phdpilot-frontend
     restart: unless-stopped
@@ -84,7 +88,10 @@ services:
       context: ./backend
       dockerfile: Dockerfile
       args:
-        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.12-slim}
+        PYTHON_IMAGE: ${PYTHON_IMAGE:-python:3.12-slim-bookworm}
+        APT_MIRROR: ${APT_MIRROR:-mirrors.aliyun.com}
+        PIP_INDEX_URL: ${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}
+        PIP_TRUSTED_HOST: ${PIP_TRUSTED_HOST:-mirrors.aliyun.com}
     container_name: phdpilot-crawler
     restart: unless-stopped
     env_file:
