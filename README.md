@@ -97,6 +97,27 @@ docker compose up -d --force-recreate backend
 
 **会删除所有业务数据**，仅适合首次部署或测试环境。
 
+### 前端容器反复 `Killed`（OOM）
+
+ECS 内存不足时，`npm ci && npm run dev` 会被系统杀掉。请用**生产 compose**（Next.js standalone，约 150–300MB）：
+
+```bash
+# .env 里设置公网访问地址，例如：
+# NEXT_PUBLIC_API_URL=http://你的公网IP/api
+# CORS_ORIGINS=http://你的公网IP
+
+docker compose -f docker-compose.prod.yml down
+docker compose -f docker-compose.prod.yml up -d --build
+```
+
+内存 ≤2GB 时先不要启 crawler，稳定后再：`docker compose -f docker-compose.prod.yml --profile crawler up -d crawler`
+
+可加 2G swap（可选）：
+
+```bash
+sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile && sudo mkswap /swapfile && sudo swapon /swapfile
+```
+
 | URL | Service |
 |-----|---------|
 | http://localhost | Frontend (via Nginx) |
