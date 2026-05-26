@@ -86,6 +86,17 @@ docker compose up -d --force-recreate backend crawler
 
 若业务表已存在且仅需对齐版本：`docker compose exec backend alembic stamp head`
 
+若 `phdpilot-backend is unhealthy`：先看日志 `docker compose logs backend --tail 80`。常见原因是迁移失败或 `--reload` 与健康检查冲突（已改为 `scripts/docker-entrypoint.sh` 且去掉 reload）。
+
+若报 `type "userrole" already exists`（半迁移状态），在 ECS 上清空库后重启：
+
+```bash
+docker compose exec -T postgres psql -U phdpilot -d phdpilot < backend/scripts/reset_db.sql
+docker compose up -d --force-recreate backend
+```
+
+**会删除所有业务数据**，仅适合首次部署或测试环境。
+
 | URL | Service |
 |-----|---------|
 | http://localhost | Frontend (via Nginx) |

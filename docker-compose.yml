@@ -58,14 +58,16 @@ services:
     volumes:
       - ./backend:/app
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      test:
+        [
+          "CMD-SHELL",
+          "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)\"",
+        ]
       interval: 10s
       timeout: 5s
-      retries: 6
-      start_period: 40s
-    command: >
-      sh -c "alembic upgrade head &&
-             uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+      retries: 12
+      start_period: 90s
+    command: ["sh", "scripts/docker-entrypoint.sh"]
 
   frontend:
     build:
@@ -108,7 +110,7 @@ services:
       postgres:
         condition: service_healthy
       backend:
-        condition: service_healthy
+        condition: service_started
     volumes:
       - ./backend:/app
     command: python -m app.crawler.tasks.daily_update
