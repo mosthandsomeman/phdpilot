@@ -71,6 +71,21 @@ docker compose up -d
 
 第二次构建会命中层缓存，`apt-get` 一般不再重复执行。
 
+### Alembic `alembic_version` / `pg_type_typname_nsp_index` 报错
+
+多为 **backend 与 crawler 同时执行** `alembic upgrade` 导致。已在 compose 中改为仅 backend 迁移。
+
+在 ECS 上修复一次：
+
+```bash
+docker compose exec postgres psql -U phdpilot -d phdpilot -c \
+  "DROP TABLE IF EXISTS alembic_version CASCADE; DROP TYPE IF EXISTS alembic_version CASCADE;"
+
+docker compose up -d --force-recreate backend crawler
+```
+
+若业务表已存在且仅需对齐版本：`docker compose exec backend alembic stamp head`
+
 | URL | Service |
 |-----|---------|
 | http://localhost | Frontend (via Nginx) |
